@@ -1,16 +1,15 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import axios from"axios" 
 import mysql2 from "mysql2"
 import nodemailer from"nodemailer"
-import https from "https"
-import postmark from"postmark" 
+import https from "https" 
 import dotenv from "dotenv"
-
 dotenv.config();
 const db=mysql2.createConnection({
   connectionLimit:process.env.f, 
   host:process.env.Database_Host,
-  user:process.env.Database_User, 
+  user:process.env.Database_User,  
   password:process.env.Database_Password ,
   database:process.env.Database , 
 
@@ -21,13 +20,11 @@ export const register=(req,res)=>{
   const username=req.body.username;
   const email=req.body.email;
   const password=req.body.password;
-
+  const Cpassword=req.body.Cpassword   
  
-
-     
  
   db.query('select email from customer where email =?',[email],async(err,result)=>{
-      if(err){
+      if(err){ 
           console.log(err)
       }
       if(result.length > 0){
@@ -39,24 +36,32 @@ export const register=(req,res)=>{
               res.status(500).json({message:"username exist take another one"})
 
         }
-     
+UserInfo
       
         })
-     
+        if(password!=Cpassword){
+          return res.status(500).json({message:"Password Does'nt Match"})
+        }
+    
+
                    const hashedPassword= await bcrypt.hash(password,12)
 
-console.log(username,email,password,hashedPassword)
+                   const d=new Date()
+                   var one=d.getMonth()+1
+                   var two=d.getHours()-12
+
+                  const date=d.getFullYear()+"-"+one+"-"+d.getDate()+"   "+two+":"+d.getMinutes()+":"+d.getSeconds()
 
             const random =  Math.floor(Math.random()*1213009478547770)
-          
-          db.query('insert into customer set  ?',{customerid:random, username:username,email:email,Password:hashedPassword},(err,result)=>{
+           console.log(date)
+          db.query('insert into customer set  ?',{customerid:random,createdAt:date, username:username,email:email,Password:hashedPassword},(err,result)=>{
             if (err){ console.log(err)}
             res.json()
           
         }  )
          
 
-      
+       
   })
 
 }
@@ -68,68 +73,119 @@ console.log(username,email,password,hashedPassword)
 
 
 
+export const login = (req, res) => {
+  const username = req.body.username; 
+  const password = req.body.password; 
 
- export const login=(req,res)=>{ 
-  
-  const username=req.body.username; 
-  const password=req.body.password; 
-  console.log(username,password) 
-  if(!username||!password){
-      return res.status(501).json({message:"please enter Username or password  "}) 
+  if (!username || !password) {
+    return res.status(400).json({ message: "Please enter username and password." }); 
   }
-  else{ 
 
-      db.query('select * from customer where username=?',[username],async(err,result)=>{
-          if(err){
-              console.log(err)
-          }
-           if (!result.length||! await bcrypt.compare(password,result[0].password))
+  db.query('SELECT * FROM customer WHERE username = ?', [username], async (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json( { message: "Database query error." });
+    }
 
-          {
-              res.status(501).json({message:"Incorrect Username Or Password"})
-
-          }
-          else{   
-               
-              const token=jwt.sign({id:result[0].CustomerId,
-                isAdmin:false
+    if (!result.length || !await bcrypt.compare(password, result[0].password)) {
+      return res.status(401).json({ message: "Incorrect username or password." });
+    } else {
  
-              },process.env.Secret_Key,{  
-                  expiresIn: 1000*60*60*24*7
-              })
+      const token = jwt.sign(
+        { id: result[0].CustomerId, isAdmin: false },
+        process.env.Secret_Key,
+        { expiresIn: '7d' }
+      );
+    
+      res.cookie("token", token, {
+        maxAge: 24 * 60 * 60 * 1000 * 7, 
+        httpOnly:true,
+        secure: true, 
+      });
+      const { password: userPassword, ...userInfo } = result[0];
 
-              const cookieExpires={
-                  expiresIn:24*60*60*1000*7
-              } 
-              result[0]
-              const{password:userPassword,...userInfo}=result[0]
-              res.cookie("token",token,cookieExpires,{
-                httpOnly:true
-              }) 
+     
+      if (userInfo.transactionPin === '000') {
+        return res.status(200).json({ data: userInfo, pinset: false, id: userInfo.CustomerId });
+      } else {
+        return res.status(200).json({ data: userInfo, pinset: true, id: userInfo.CustomerId });
+      }
+    }
+  });
+};
 
   
-              console.log(userInfo)
-                       if(userInfo.transactionPin=='000'){
-                        console.log(userInfo)
+export const setMtnData=(req,res)=>{
+  const{a,b,c,d,ee,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,ab,ac,ad,ae,af}=req.body
+  db.query(`update dataprice set mtnsme500=${a},mtnsme1gb=${b},mtnsme2gb=${c},mtnsme3gb=${d},mtnsme5gb=${ee},mtnsme10gb=${f},mtnsme2500mb=${g},mtnsme21gb=${h},mtnsme21p5=${i},mtnsme22gb=${j},mtnsme23gb=${k},mtnsme24gb=${l},mtnsme25gb=${m},mtnsme210gb=${n},mtndatashare1gb=${o},mtndatashare2gb=${p},mtndatashare3gb=${q},mtndatashare5gb=${r}, mtndatashare500mb=${s},cooperate500mb=${t},cooperate250mb=${u},cooperate1gb=${v},cooperate2gb=${w},cooperate3gb=${x},cooperate5gb=${y},cooperate10gb=${z},mtngifting500mb=${aa},mtngifting1gb=${ab},mtngifting1p5gb=${ac},mtngifting2p5gb=${ad},mtngifting3p5gb=${ae},mtngifting15gb=${af} where MuhdId=${38271764}`,(err,result)=>{
+    if(err){console.log(err)}
+  res.status(200).json()
+  })
+} 
+export const PopUp=(req,res)=>{ 
+  const{    a}=req.body  
 
-                        return res.status(200).json({data:userInfo ,pinset:false,id:userInfo.CustomerId})
+  db.query(`update dataprice set DialogMessage="${a}"  where muhdid=${38271764}`,(err,result)=>{
+    if(err){console.log(err)} 
+res.status(200).json()  })
+} 
+export const setNineData=(req,res)=>{
+  const{    a,b,c,d,ee,f,g,h}=req.body 
 
-                       } 
-                else   {
-                  console.log(userInfo)
-
-                      return res.status(200).json({data:userInfo ,pinset:true,id:userInfo.CustomerId})
-
-                    }
-
-
-           
-          }
-       })
-  }
- 
+  db.query(`update dataprice set nine200mb=${a},nine500mb=${b},nine1gb=${c},nine2gb=${h},nine3gb=${ee},nine5gb=${d},nine10gb=${f},nine15gb=${h} where muhdid=${38271764}`,(err,result)=>{
+    if(err){console.log(err)} 
+res.status(200).json()  })
 }
+export const setGloData=(req,res)=>{
+  const{   a,b,c,d,ee,f,g }=req.body 
+db.query(`update dataprice set glo200mb=${a},glo500mb=${b},glo1gb=${c},glo2gb=${d},glo3gb=${ee},glo5gb=${f},glo10gb=${g} where muhdid="${38271764}"`,(err,result)=>{
+  if(err){console.log(err)} 
+  res.status(200).json() 
 
+})}
+export const setAirtelData=(req,res)=>{
+  const{    ap,ao,an,am,al,ak,ai,ah,aj,ag}=req.body 
+  db.query(`update dataprice set airtelgifting1gb=${ag},airtelgifting3gb=${ah},airtelgifting10gb=${ai},airtelcooperate300mb=${aj},airtelcooperate500mb=${ak},airtelcooperate1gb=${al},airtelcooperate2gb=${am},airtelcooperate5gb=${an},airtelcooperate10gb=${ao},airtelcooperate15gb=${ap}`,(err,result)=>{
+    if(err){console.log(err)}  
+    res.status(200).json()
+  })
+}
+export const AdminLogin = (req, res) => {
+  const email = req.body.email?.trim(); 
+  const password = req.body.password;
+  const today = new Date();
+  const formattedDate = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()}`;
+
+
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Please enter email and password." });
+  }
+
+  // Check if email and password are correct
+  if (email !== process.env.ADMIN_EMAIL) {
+    return res.status(400).json({ message: "Please enter a valid email for admin" });
+  }
+
+  if (password !==formattedDate+  process.env.ADMIN_PASSWORD) { 
+    return res.status(400).json({ message: "Incorrect password, try again." });
+  }
+
+  const Admintoken = jwt.sign(
+    { id: process.env.ADMIN_ID, isAdmin: true },
+    process.env.Secret_Key,
+    { expiresIn: '7d' }
+  );
+
+  res.cookie("Admintoken", Admintoken, {
+    maxAge: 24 * 60 * 60 * 1000 * 7, 
+    httpOnly:true,
+    secure: true, 
+  });
+  const admin="muhammad lawan"
+res.status(200).json(admin)
+};
+  
 
 export const logout = (req, res) => {
   res.clearCookie("token").status(200).json({ message: "Logout Successful" });
@@ -139,17 +195,17 @@ export const pin= async(req,res)=>{
  const pin=req.body.pin 
  const pin2=req.body.Confirmpin 
 
- console.log(pin,pin2) 
  const id=req.params.id 
 if(pin!=pin2){ 
   res.status(501).json({message:"Pin Does'nt Match"})
 }   
-  else{ 
+  else{  
 const hashedpin= await bcrypt.hash(pin,12)
 db.query(`update customer set transactionpin="${hashedpin}" where Customerid="${id}"`,(err,result)=>{
   if(err){ console.log(err)} 
   db.query(`select * from customer where  customerid="${id}"`,(err,result)=>{
     if(err){console.log(err)} 
+    console.log(result ,id)
     const{password:userPassword,...userInfo}=result[0]
     return res.status(200).json(userInfo) 
 
@@ -277,6 +333,64 @@ export const resetPassword = (req, res) => {
   }); 
  };
 
+
+ export const BalanceInfo=async(req,res)=>{
+
+
+    // const userDetailsResponse = await axios.get('https://elrufaidatalink.com/api/user/', {
+    //   headers: {
+    //     'Authorization': 'Token 3c88c484d3d405c4cb80b92bd3dc8eab182a4c50',
+    //     'Content-Type': 'application/json' 
+    //   }
+    // });
+
+    //  var elrufaiBalance;
+
+    // if(userDetailsResponse.data){
+    //   elrufaiBalance = userDetailsResponse.data.user.Account_Balance;
+    // }
+    // else{
+    //   elrufaiBalance="No Internet Connection"
+    // }
+
+    // console.log(elrufaiBalance)
+    const d=new Date()
+    var one=d.getMonth()+1
+   const date=d.getFullYear()+"-"+one+"-"+d.getDate()
+    db.query(`select SUM(TansactionAmount) AS A  from transactionhistory where transactionType="Data Sub" AND  createdAt="${date}" UNION select SUM(TansactionAmount)  from transactionhistory where transactionType!="Data Sub" AND  createdAt="${date}" UNION Select SUM(price) from customer`,(err,result)=>{
+      if(err){console.log(result)}
+      const final1=result[0]
+      const final2=result[1]
+      const final3=result[2]  
+      const total=[final1,final2,final3]
+      res.status(200).json(total)
+    })
+  
+ }  
+ export const fetchFunding=(req,res)=>{
+  db.query(`select * from FundingHistory`,(err,result)=>{
+    if(err){console.log(err)}
+            res.status(200).json(result) 
+console.log(new Date()) 
+ 
+  })
+ }
+ export const UserInfo=(req,res)=>{
+
+  const id=req.params.id
+  db.query(`select * from customer where customerID="${id}"`,(err,result)=>{
+    if(err){console.log(err)} 
+    res.status(200).json(result[0])
+  })
+ }
+
+ export const fetchUser=(req,res)=>{
+
+ db.query(`select customerID,email,createdAt,username from Customer`,(err,result)=>{
+  if(err){console.log(err)}  
+res.status(200).json(result) })
+ }
+
 export const dialog=(req,res)=>{
     db.query(`select dialogmessage from dataprice where muhdid="38271764"`,(err,result)=>{
       if(err) {console.log(err)}
@@ -323,14 +437,19 @@ export const pricing=async(req,res)=>{
     res.status(500).json({ message: 'Server error' });
   }
 } 
-export const BuyData=(req,response)=>{ 
+export const BuyData=(req,response)=>{   
+                   const d=new Date()
+                   var one=d.getMonth()+1
+                   var two=d.getHours()-12 
+
+                  const date=d.getFullYear()+"-"+one+"-"+d.getDate()+"   "+two+":"+d.getMinutes()+":"+d.getSeconds()
+                  const date2=d.getFullYear()+"-"+one+"-"+d.getDate()
   const { network,datatype,mtnplan,nairaSign,phonenumber,pin,id,checkbox,mtnsme500,mtnsme1gb,mtnsme2gb,mtnsme3gb,mtnsme5gb,mtnsme10gb,mtnsme2500mb,mtnsme21gb,mtnsme21p5,mtnsme22gb,mtnsme23gb,mtnsme24gb,mtnsme25gb,mtnsme210gb,mtndatashare1gb,mtndatashare2gb,mtndatashare3gb,mtndatashare5gb
     , mtndatashare500mb,mtncooperate500mb,byepass,mtncooperate250mb,mtncooperate1gb,mtncooperate2gb,mtncooperate3gb,mtncooperate5gb,mtncooperate10gb,mtngifting500mb,mtngifting1gb,mtngifting1p5gb,mtngifting2p5gb,mtngifting3p5gb,mtngifting15gb,airelgifting1gb,airelgifting3gb,airelgifting10gb,airelcooperate500mb,airelcooperate300mb,airelcooperate1gb,airelcooperate2gb,airelcooperate5gb,airelcooperate10gb,airelcooperate15gb,glo200mb,glo500mb,glo1gb,glo2gb,glo3gb,glo5gb,glo10gb,nine500mb,nine1gb,nine2gb,nine3gb,nine5gb,nine10gb,nine15gb}=req.body  
                 db.query(`select price,transactionpin from customer where customerid="${id}"`,async(err,result) =>{
-               if(err){console.log(err)}
-                
-                var r=null 
-                if(byepass==="on"){
+               if(err){console.log(err)}  
+                var r=null   
+                if(byepass==="on"){ 
                   r=true
                 }
                 else{r=false}
@@ -347,7 +466,7 @@ export const BuyData=(req,response)=>{
                         
       const postData = JSON.stringify({
         network: 1,       
-        mobile_number: phonenumber,
+        mobile_number: phonenumber, 
         plan: 290,            
         Ported_number:r
       });
@@ -369,7 +488,8 @@ export const BuyData=(req,response)=>{
         let data = '';
       
 
-        res.on('data', (chunk) => {
+        res.on('data', (chunk) => {   
+          
           data += chunk;
         });
       
@@ -380,13 +500,13 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme500
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme500}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",NetworkPlan="MTN SME",TodayDate="${date2}" ,transactiontype="Data Sub" ,createdAt="${date}",transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme500},userid="${id}" ,planName="500MB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   response.status(200).json(result)
                  })  
 
-
+94
           }
           else{
             response.status(501).json({message:"NETWORK ERROR ,PLEASE TRY AGAIN"})
@@ -456,7 +576,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme1gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme1gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",NetworkPlan="MTN SME",TodayDate="${date2}" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme1gb},userid="${id}" ,planName="500MB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   response.status(200).json(result)
@@ -533,7 +653,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme2gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme2gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",NetworkPlan="MTN SME" ,TodayDate="${date2}",createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme2gb},userid="${id}" ,planName="500MB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   response.status(200).json(result)
@@ -606,7 +726,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme3gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme3gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",NetworkPlan="MTN SME",TodayDate="${date2}" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme3gb},userid="${id}" ,planName="3GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   response.status(200).json(result)
@@ -680,7 +800,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme5gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme5gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,NetworkPlan="MTN SME" ,TodayDate="${date2}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme5gb},createdAt="${date}",userid="${id}" ,planName="5GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -755,7 +875,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme10gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme10gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",NetworkPlan="MTN SME",TodayDate="${date2}" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme10gb},userid="${id}" ,planName="10GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -791,7 +911,7 @@ export const BuyData=(req,response)=>{
                      }
 
 
-              //sme end
+              //sme end 
 
              }
              else if(datatype==="SME2"){
@@ -839,7 +959,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme2500mb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme2500mb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",NetworkPlan="MTN SME2",TodayDate="${date2}" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme2500mb},userid="${id}" ,planName="500MB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -913,7 +1033,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme21gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme21gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub",TodayDate="${date2}" ,NetworkPlan="MTN SME2" ,createdAt="${date}",transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme21gb},userid="${id}" ,planName="1GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -987,7 +1107,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme22gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme22gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,TodayDate="${date2}",transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme22gb},NetworkPlan="MTN SME2" ,createdAt="${date}",userid="${id}" ,planName="2GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1060,7 +1180,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme21p5
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme21p5}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,NetworkPlan="MTN SME2" ,TodayDate="${date2}",createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme21p5},userid="${id}" ,planName="1.5GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1135,7 +1255,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme23gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme23gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",NetworkPlan="MTN SME2",TodayDate="${date2}" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme23gb},userid="${id}" ,planName="3GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1210,7 +1330,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme24gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme24gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,NetworkPlan="MTN SME2",TodayDate="${date2}" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme24gb},userid="${id}" ,planName="4GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1284,7 +1404,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme25gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme25gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",NetworkPlan="MTN SME2",TodayDate="${date2}" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme25gb},userid="${id}" ,planName="5GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1378,7 +1498,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtnsme210gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtnsme210gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub",TodayDate="${date2}",NetworkPlan="MTN SME2" ,createdAt="${date}" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtnsme210gb},userid="${id}" ,planName="10GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1452,7 +1572,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtndatashare1gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtndatashare1gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",NetworkPlan="MTN DATASHARE" ,TodayDate="${date2}",createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtndatashare1gb},userid="${id}" ,planName="1GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1525,7 +1645,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtndatashare2gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtndatashare2gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",NetworkPlan="MTN DATASHARE" ,createdAt="${date}" ,TodayDate="${date2}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtndatashare2gb},userid="${id}" ,planName="2GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1558,7 +1678,6 @@ export const BuyData=(req,response)=>{
                 }
                 else if(mtnplan==="3GB   "+nairaSign+mtndatashare3gb){
 
-
                   if(result[0].price>=mtndatashare3gb){
                     if(!result.length||! await bcrypt.compare(pin,result[0].transactionpin )){
                      response.status(501).json({message:"INCORRECT PIN"})
@@ -1590,21 +1709,21 @@ export const BuyData=(req,response)=>{
                 let data = '';
               
         
-                res.on('data', (chunk) => {
-                  data += chunk;
-                });
+                res.on('data', (chunk) => {  
+                  data += chunk;  
+                });  
               
         
-                res.on('end', () => {
-                 const kano=JSON.parse(data)
+                res.on('end', () => { 
+                  const kano=JSON.parse(data)
                   if(kano.Status==="successful"){
-                    const NewBalance=result[0].price-mtndatashare3gb
+                     const NewBalance=result[0].price-mtndatashare3gb
                     const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
                       db.query(`update customer set price="${NewBalance}"`)
-                      db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtndatashare3gb}",userid="${id}" ,planName="500MB" `)
+                      db.query(`insert into transactionhistory set transactionid="${MDS}" ,NetworkPlan="MTN DATASHARE",TodayDate="${date2}" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtndatashare3gb},userid="${id}" ,planName="3GB" `)
                          db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                           if(err){console.log(err)}
-                          res.json(result)
+                          response.status(200).json(result)
                          })  
         
         
@@ -1675,7 +1794,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtndatashare5gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtndatashare5gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub",TodayDate="${date2}" ,NetworkPlan="MTN DATASHARE" ,createdAt="${date}",transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtndatashare5gb},userid="${id}" ,planName="5GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1757,7 +1876,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtncooperate250mb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtncooperate250mb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,NetworkPlan="MTN COOPERATE GIFTING" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtncooperate250mb},userid="${id}" ,planName="250MB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1832,7 +1951,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtncooperate500mb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtncooperate500mb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="MTN COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtncooperate500mb},userid="${id}" ,planName="500MB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1906,7 +2025,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtncooperate1gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtncooperate1gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}",NetworkPlan="MTN COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber=${phonenumber} ,tansactionamount="${mtncooperate1gb}",userid="${id}" ,planName="1GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -1980,9 +2099,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtncooperate2gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtncooperate2gb
-
-              }",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,NetworkPlan="MTN COOPERATE GIFTING" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtncooperate2gb},userid="${id}" ,planName="2GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -2056,7 +2173,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtncooperate3gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtncooperate3gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,NetworkPlan="MTN COOPERATE GIFTING" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtncooperate3gb},userid="${id}" ,planName="3GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -2130,7 +2247,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtncooperate5gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtncooperate5gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="MTN COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtncooperate5gb},userid="${id}" ,planName="5GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -2204,7 +2321,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtncooperate10gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtncooperate10gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,NetworkPlan="MTN COOPERATE GIFTING" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtncooperate10gb},userid="${id}" ,planName="10GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -2242,162 +2359,7 @@ export const BuyData=(req,response)=>{
                 //cooperate end
 
               }
-              else if(datatype==="gifting"){
-                if(mtnplan==="500MB   "+nairaSign+mtngifting500mb){
-                  if(result[0].price>=mtngifting500mb){
-                    if(!result.length||! await bcrypt.compare(pin,result[0].transactionpin )){
-                     response.status(501).json({message:"INCORRECT PIN"})
-            }
-            else{
-              //api 
               
-      const postData = JSON.stringify({
-        network: 1,       
-        mobile_number: phonenumber,
-        plan: 333,            
-        Ported_number:r
-      });
-      
-                        const options = {
-                          hostname: 'elrufaidatalink.com', 
-                          path: '/api/data/',
-                          port:443,
-                          method: 'POST',
-                          headers: {
-                            'Authorization': 'Token 3c88c484d3d405c4cb80b92bd3dc8eab182a4c50',
-                            'Content-Type': 'application/json',
-                            'Content-Length': postData.length 
-                          }
-                        };
-                        
-  
-      const req = https.request(options, (res) => {
-        let data = '';
-      
-
-        res.on('data', (chunk) => {
-          data += chunk;
-        });
-      
-
-        res.on('end', () => {
-         const kano=JSON.parse(data)
-          if(kano.Status==="successful"){
-            const NewBalance=result[0].price-mtngifting500mb
-            const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
-              db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtngifting500mb}",userid="${id}" ,planName="500MB" `)
-                 db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
-                  if(err){console.log(err)}
-                  res.json(result)
-                 })  
-
-
-          }
-          else{
-           response.status(501).json({message:"NETWORK ERROR ,PLEASE TRY AGAIN"})
-          }
-        });
-      });
-      
-
-      req.on('error', (e) => {
-        console.error(`Problem with request: ${e.message}`);
-      });
-
-      req.write(postData);
-      
-
-      req.end();
-
-            }
-                  }
-                  else{
-                   response.status(501).json({message:"INSUFFICIENT BALANCE"})
-                  }
-
-                }
-                else if(mtnplan==="1.5GB   "+nairaSign+mtngifting1p5gb){
-                  if(result[0].price>=mtngifting1p5gb){
-                    if(!result.length||! await bcrypt.compare(pin,result[0].transactionpin )){
-                     response.status(501).json({message:"INCORRECT PIN"})
-            }
-            else{
-                //api 
-              
-                const postData = JSON.stringify({
-                  network: 1,       
-                  mobile_number: phonenumber,
-                  plan: 302,            
-                  Ported_number:r
-                });
-                
-                                  const options = {
-                                    hostname: 'elrufaidatalink.com', 
-                                    path: '/api/data/',
-                                    port:443,
-                                    method: 'POST',
-                                    headers: {
-                                      'Authorization': 'Token 3c88c484d3d405c4cb80b92bd3dc8eab182a4c50',
-                                      'Content-Type': 'application/json',
-                                      'Content-Length': postData.length 
-                                    }
-                                  };
-                                  
-            
-                const req = https.request(options, (res) => {
-                  let data = '';
-                
-          
-                  res.on('data', (chunk) => {
-                    data += chunk;
-                  });
-                
-          
-                  res.on('end', () => {
-                   const kano=JSON.parse(data)
-                    if(kano.Status==="successful"){
-                      const NewBalance=result[0].price-mtncooperate10gb
-                      const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
-                        db.query(`update customer set price="${NewBalance}"`)
-                        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtncooperate10gb}",userid="${id}" ,planName="500MB" `)
-                           db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
-                            if(err){console.log(err)}
-                            res.json(result)
-                           })  
-          
-          
-                    }
-                    else{
-                     response.status(501).json({message:"NETWORK ERROR ,PLEASE TRY AGAIN"})
-                    }
-                  });
-                });
-                
-          
-                req.on('error', (e) => {
-                  console.error(`Problem with request: ${e.message}`);
-                });
-          
-                req.write(postData);
-                
-          
-                req.end();
-                        
-           
-                      }
-                            }
-                            else{
-                             response.status(501).json({message:"INSUFFICIENT BALANCE"})
-                            }
-          
-                          }
-                          else{
-                          response.status(501).json({message:"SELECT VALID MTN TYPE"})
-                          }
-                          //cooperate end
-          
-                        }
                         else if(datatype==="GIFTING"){
                           if(mtnplan==="500MB   "+nairaSign+mtngifting500mb){
                             if(result[0].price>=mtngifting500mb){
@@ -2439,10 +2401,10 @@ export const BuyData=(req,response)=>{
                   res.on('end', () => {
                    const kano=JSON.parse(data)
                     if(kano.Status==="successful"){
-                      const NewBalance=result[0].price-mtngifting1p5gb
+                      const NewBalance=result[0].price-mtngifting500mb
                       const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
                         db.query(`update customer set price="${NewBalance}"`)
-                        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtngifting1p5gb}",userid="${id}" ,planName="500MB" `)
+                        db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,NetworkPlan="MTN  GIFTING" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtngifting500MB},userid="${id}" ,planName="500MB `)
                            db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                             if(err){console.log(err)}
                             res.json(result)
@@ -2473,6 +2435,156 @@ export const BuyData=(req,response)=>{
                   }
 
                 }
+
+
+                if(mtnplan==="1GB   "+nairaSign+mtngifting1gb){
+                  if(result[0].price>=mtngifting1gb){
+                    if(!result.length||! await bcrypt.compare(pin,result[0].transactionpin )){
+                     response.status(501).json({message:"INCORRECT PIN"})
+            }
+            else{
+              //api 
+              
+      const postData = JSON.stringify({
+        network: 1,       
+        mobile_number: phonenumber,
+        plan: 331,            
+        Ported_number:r
+      });
+      
+                        const options = {
+                          hostname: 'elrufaidatalink.com', 
+                          path: '/api/data/',
+                          port:443,
+                          method: 'POST',
+                          headers: {
+                            'Authorization': 'Token 3c88c484d3d405c4cb80b92bd3dc8eab182a4c50',
+                            'Content-Type': 'application/json',
+                            'Content-Length': postData.length 
+                          }
+                        };
+                        
+  
+      const req = https.request(options, (res) => {
+        let data = '';
+      
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+      
+
+        res.on('end', () => {
+         const kano=JSON.parse(data)
+          if(kano.Status==="successful"){
+            const NewBalance=result[0].price-mtngifting1gb
+            const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
+              db.query(`update customer set price="${NewBalance}"`)
+              db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,NetworkPlan="MTN  GIFTING" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtngifting1gb},userid="${id}" ,planName="1GB `)
+                 db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
+                  if(err){console.log(err)}
+                  res.json(result)
+                 })  
+
+
+          }
+          else{
+           response.status(501).json({message:"NETWORK ERROR ,PLEASE TRY AGAIN"})
+          }
+        });
+      });
+      
+
+      req.on('error', (e) => {
+        console.error(`Problem with request: ${e.message}`);
+      });
+
+      req.write(postData);
+      
+
+      req.end();
+
+  }
+        }
+        else{
+         response.status(501).json({message:"INSUFFICIENT BALANCE"})
+        }
+
+      }
+      if(mtnplan==="1.5GB   "+nairaSign+mtngifting1p5gb){
+        if(result[0].price>=mtngifting1p5gb){
+          if(!result.length||! await bcrypt.compare(pin,result[0].transactionpin )){
+           response.status(501).json({message:"INCORRECT PIN"})
+  } 
+  else{
+    //api 
+    
+const postData = JSON.stringify({
+network: 1,       
+mobile_number: phonenumber,
+plan: 331,            
+Ported_number:r
+});
+
+              const options = {
+                hostname: 'elrufaidatalink.com', 
+                path: '/api/data/',
+                port:443,
+                method: 'POST',
+                headers: {
+                  'Authorization': 'Token 3c88c484d3d405c4cb80b92bd3dc8eab182a4c50',
+                  'Content-Type': 'application/json',
+                  'Content-Length': postData.length 
+                }
+              };
+              
+
+const req = https.request(options, (res) => {
+let data = '';
+
+
+res.on('data', (chunk) => {
+data += chunk;
+});
+
+
+res.on('end', () => {
+const kano=JSON.parse(data)
+if(kano.Status==="successful"){
+  const NewBalance=result[0].price-mtngifting1p5gb
+  const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
+    db.query(`update customer set price="${NewBalance}"`)
+    db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="MTN  GIFTING" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtngifting1p5gb},userid="${id}" ,planName="1.5GB `)
+       db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
+        if(err){console.log(err)}
+        res.json(result)
+       })  
+
+
+}
+else{
+ response.status(501).json({message:"NETWORK ERROR ,PLEASE TRY AGAIN"})
+}
+});
+});
+
+
+req.on('error', (e) => {
+console.error(`Problem with request: ${e.message}`);
+});
+
+req.write(postData);
+
+
+req.end();
+
+}
+}
+else{
+response.status(501).json({message:"INSUFFICIENT BALANCE"})
+}
+
+}
                 else if(mtnplan==="2.5GB   "+nairaSign+mtngifting2p5gb){
                   if(result[0].price>=mtngifting2p5gb){
                     if(!result.length||! await bcrypt.compare(pin,result[0].transactionpin )){
@@ -2516,7 +2628,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtngifting2p5gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtngifting2p5gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="MTN  GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtngifting2p5gb},userid="${id}" ,planName="2.5GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -2590,7 +2702,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtngifting3p5gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtngifting3p5gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="MTN  GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtngifting3p5gb},userid="${id}" ,planName="3.5GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -2664,7 +2776,7 @@ export const BuyData=(req,response)=>{
             const NewBalance=result[0].price-mtngifting15gb
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
               db.query(`update customer set price="${NewBalance}"`)
-              db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${mtngifting15gb}",userid="${id}" ,planName="500MB" `)
+              db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="MTN  GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${mtngifting15gb},userid="${id}" ,planName="15GB" `)
                  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
                   if(err){console.log(err)}
                   res.json(result)
@@ -2754,7 +2866,7 @@ const req = https.request(options, (res) => {
       const NewBalance=result[0].price-airelcooperate300mb
       const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
         db.query(`update customer set price="${NewBalance}"`)
-        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${airelcooperate300mb}",userid="${id}" ,planName="500MB" `)
+        db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}",NetworkPlan="AIRTEL  COOPERATE" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${airelcooperate300mb},userid="${id}" ,planName="300MB" `)
            db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
             if(err){console.log(err)}
             res.json(result)
@@ -2829,7 +2941,7 @@ const req = https.request(options, (res) => {
       const NewBalance=result[0].price-airelcooperate500mb
       const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
         db.query(`update customer set price="${NewBalance}"`)
-        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${airelcooperate500mb}",userid="${id}" ,planName="500MB" `)
+        db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,transactiontype="Data Sub",NetworkPlan="AIRTEL COOPERATE" ,createdAt="${date}" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${airelcooperate500mb},userid="${id}" ,planName="500MB" `)
            db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
             if(err){console.log(err)}
             res.json(result)
@@ -2903,7 +3015,7 @@ const req = https.request(options, (res) => {
       const NewBalance=result[0].price-airelgifting1gb
       const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
         db.query(`update customer set price="${NewBalance}"`)
-        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${airelgifting1gb}",userid="${id}" ,planName="500MB" `)
+        db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="AIRTEL  GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${airelgifting1gb},userid="${id}" ,planName="1GB" `)
            db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
             if(err){console.log(err)}
             res.json(result)
@@ -2978,7 +3090,7 @@ const req = https.request(options, (res) => {
       const NewBalance=result[0].price-airelcooperate1gb
       const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
         db.query(`update customer set price="${NewBalance}"`)
-        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${airelcooperate1gb}",userid="${id}" ,planName="500MB" `)
+        db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}",NetworkPlan="AIRTEL  COOPERATE" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${airelcooperate1gb},userid="${id}" ,planName="1GB" `)
            db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
             if(err){console.log(err)}
             res.json(result)
@@ -3053,7 +3165,7 @@ const req = https.request(options, (res) => {
       const NewBalance=result[0].price-airelcooperate2gb
       const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
         db.query(`update customer set price="${NewBalance}"`)
-        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${airelcooperate2gb}",userid="${id}" ,planName="500MB" `)
+        db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="AIRTEL  COOPERATE" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${airelcooperate2gb},userid="${id}" ,planName="2GB" `)
            db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
             if(err){console.log(err)}
             res.json(result)
@@ -3128,13 +3240,13 @@ const req = https.request(options, (res) => {
       const NewBalance=result[0].price-airelgifting3gb
       const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
         db.query(`update customer set price="${NewBalance}"`)
-        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${airelgifting3gb}",userid="${id}" ,planName="500MB" `)
+        db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="AIRTEL  GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${airelgifting3gb},userid="${id}" ,planName="3GB" `)
            db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
             if(err){console.log(err)}
             res.json(result)
            })  
 
-
+ 
     }
     else{
      response.status(501).json({message:"NETWORK ERROR ,PLEASE TRY AGAIN"})
@@ -3203,7 +3315,7 @@ const req = https.request(options, (res) => {
       const NewBalance=result[0].price-airelcooperate5gb
       const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
         db.query(`update customer set price="${NewBalance}"`)
-        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${airelcooperate5gb}",userid="${id}" ,planName="500MB" `)
+        db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}" ,NetworkPlan="AIRTEL  COOPERATE" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${airelcooperate5gb},userid="${id}" ,planName="5GB" `)
            db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
             if(err){console.log(err)}
             res.json(result)
@@ -3276,7 +3388,7 @@ const req = https.request(options, (res) => {
       const NewBalance=result[0].price-airelgifting10gb
       const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
         db.query(`update customer set price="${NewBalance}"`)
-        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${airelgifting10gb}",userid="${id}" ,planName="500MB" `)
+        db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="AIRTEL GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${airelgifting10gb},userid="${id}" ,planName="10GB" `)
            db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
             if(err){console.log(err)}
             res.json(result)
@@ -3351,7 +3463,7 @@ const req = https.request(options, (res) => {
       const NewBalance=result[0].price-airelcooperate10gb
       const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
         db.query(`update customer set price="${NewBalance}"`)
-        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${airelcooperate10gb}",userid="${id}" ,planName="500MB" `)
+        db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}" ,NetworkPlan="AIRTEL  COOPERATE" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${airelcooperate10gb},userid="${id}" ,planName="10GB" `)
            db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
             if(err){console.log(err)}
             res.json(result)
@@ -3425,7 +3537,7 @@ const req = https.request(options, (res) => {
       const NewBalance=result[0].price-airelcooperate15gb
       const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
         db.query(`update customer set price="${NewBalance}"`)
-        db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${airelcooperate15gb}",userid="${id}" ,planName="500MB" `)
+        db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",transactiontype="Data Sub",NetworkPlan="AIRTEL COOPERATE" ,createdAt="${date}" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${airelcooperate15gb},userid="${id}" ,planName="15GB" `)
            db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
             if(err){console.log(err)}
             res.json(result)
@@ -3506,7 +3618,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-glo200mb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${glo200mb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="GLO COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${glo200mb},userid="${id}" ,planName="200MB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
         res.json(result)
@@ -3581,7 +3693,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-glo500mb
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${glo500mb}",userid="${id}" ,planName="500MB" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="GLO COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${glo500mb},userid="${id}" ,planName="500MB" `)
    db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
     if(err){console.log(err)}
     res.json(result)
@@ -3656,7 +3768,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-glo1gb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${glo1gb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,NetworkPlan="GLO COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${glo1gb},userid="${id}" ,planName="1GG" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
         res.json(result)
@@ -3731,7 +3843,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-glo2gb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${glo2gb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="GLO COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${glo2gb},userid="${id}" ,planName="2GB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
         res.json(result)
@@ -3806,7 +3918,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-glo3gb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${glo3gb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="GLO COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${glo3gb},userid="${id}" ,planName="3GB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
         res.json(result)
@@ -3881,7 +3993,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-glo5gb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${glo5gb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,NetworkPlan="GLO COOPERATE GIFTING" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${glo5gb},userid="${id}" ,planName="5GB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
         res.json(result)
@@ -3955,7 +4067,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-glo10gb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${glo10gb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="GLO COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${glo10gb},userid="${id}" ,planName="10GB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
         res.json(result)
@@ -4036,7 +4148,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-nine500mb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${nine500mb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="9MOBILE COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${nine500mb},userid="${id}" ,planName="500MB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
         res.json(result)
@@ -4110,7 +4222,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-nine1gb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${nine1gb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="9MOBILE COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${nine1gb},userid="${id}" ,planName="1GB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
         res.json(result)
@@ -4184,7 +4296,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-nine2gb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${nine2gb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="9MOBILE COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${nine2gb},userid="${id}" ,planName="2GB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
         res.json(result)
@@ -4258,7 +4370,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-nine3gb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${nine3gb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="9MOBILE COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${nine3gb},userid="${id}" ,planName="3GB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
         res.json(result)
@@ -4332,7 +4444,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-nine5gb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${nine5gb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",NetworkPlan="9MOBILE COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${nine5gb},userid="${id}" ,planName="5GB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)} 
         res.json(result)
@@ -4406,7 +4518,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-nine10gb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${nine10gb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,NetworkPlan="9MOBILE COOPERATE GIFTING" ,createdAt="${date}",transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${nine10gb},userid="${id}" ,planName="10GB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
         res.json(result)
@@ -4482,7 +4594,7 @@ if(kano.Status==="successful"){
   const NewBalance=result[0].price-nine15gb
   const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
     db.query(`update customer set price="${NewBalance}"`)
-    db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount="${nine15gb}",userid="${id}" ,planName="500MB" `)
+    db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}",NetworkPlan="9MOBILE COOPERATE GIFTING" ,createdAt="${date}" ,transactiontype="Data Sub" ,transactionstatus="successful", recipientnumber="${phonenumber} ",tansactionamount=${nine15gb},userid="${id}" ,planName="15GB" `)
        db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
         if(err){console.log(err)}
        response.status(200).json(result)
@@ -4530,7 +4642,7 @@ req.end();
 
  
 
-
+ 
 
 
 
@@ -4574,38 +4686,21 @@ req.end();
 }
  
 
-export const pinforgot=(req,res)=>{ 
-  const{pwd,t}=req.body  
-  db.query(`select password,email from customer where customerid="${t}"`,async(err,result)=>{
-    if(err){ console.log(err)} 
-    if (!result.length||! await bcrypt.compare(pwd,result[0].password))
 
-      {
-         res.status(501).json({message:"Incorrect Login Password "})
 
-      } 
-    else{ 
-      const secret=process.env.Secret_Key+result[0].password 
-
-      const payload={
-             email:result[0].email,
-             id:t
-      }  
-      const token=jwt.sign(payload,secret,{expiresIn:'12m'})
-      const link=`http://localhost:5173/ResetPassword/${t}/${token}`
-      console.log(link)
-
-    }
-    
-    
-    })
-}
 
 
 
 
 export const BuyAirtime=(req,response)=>{
  const {network,pin,id,Plan,phonenumber,byepass}=req.body
+
+const d=new Date()
+var one=d.getMonth()+1
+var two=d.getHours()-12 
+
+const date=d.getFullYear()+"-"+one+"-"+d.getDate()+"   "+two+":"+d.getMinutes()+":"+d.getSeconds()
+const date2=d.getFullYear()+"-"+one+"-"+d.getDate()
  var t=null 
  if(byepass==="on"){
   t=true
@@ -4615,7 +4710,6 @@ export const BuyAirtime=(req,response)=>{
  }
  db.query(`select transactionpin,price from customer where customerid="${id}"`,async(err,result)=>{
       if(err){console.log(err)}
-      console.log(result)
   if(network==="MTN"){
     if(Plan==="₦100  @₦99"){
       if(result[0].price>=100){
@@ -4660,9 +4754,9 @@ console.log(JSON.parse(data));
 const kano=JSON.parse(data) 
 if(kano.Status==="successful"){
 const NewBalance=result[0].price-98
-const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
+const MDS="MDS"+Math.floor(Math.random()*1213009478547770) 
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="MTN" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${98}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,createdAt="${date}" ,transactiontype="MTN AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${98},userid="${id}" ,planName="100 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -4737,7 +4831,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-297
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="MTN AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${297}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}" ,TodayDate="${date2}",transactiontype="MTN AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${297},userid="${id}" ,planName="300 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -4812,7 +4906,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-198
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="MTN AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${198}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}",TodayDate="${date2}" ,transactiontype="MTN AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${198},userid="${id}" ,planName="200 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -4887,7 +4981,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-495
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="MTN AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${495}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}",TodayDate="${date2}" ,transactiontype="MTN AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${495},userid="${id}" ,planName="500 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -4962,7 +5056,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-990
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="MTN AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${990}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}",TodayDate="${date2}" ,transactiontype="MTN AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${990},userid="${id}" ,planName="1000 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5045,7 +5139,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-98
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Airtel AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${98}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}",TodayDate="${date2}" ,transactiontype="Airtel AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${98},userid="${id}" ,planName="100 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5068,7 +5162,7 @@ req.write(postData);
 
 
 req.end();
-}
+} 
 
       }
       else{
@@ -5120,7 +5214,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-297
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Airtel AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${297}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}" ,createdAt="${date}" ,TodayDate="${date2}",transactiontype="Airtel AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${297},userid="${id}" ,planName="300 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5195,7 +5289,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-198
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Airtel AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${198}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}",TodayDate="${date2}" ,transactiontype="Airtel AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${198},userid="${id}" ,planName="200 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5270,7 +5364,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-495
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Airtel" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${495}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}",TodayDate="${date2}" ,transactiontype="Airtel" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${495},userid="${id}" ,planName="500 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5339,13 +5433,12 @@ data += chunk;
 
  
 res.on('end', () => { 
-console.log(JSON.parse(data));
 const kano=JSON.parse(data) 
 if(kano.Status==="successful"){
 const NewBalance=result[0].price-990
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Airtel" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${990}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}",TodayDate="${date2}" ,transactiontype="Airtel" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${990},userid="${id}" ,planName="1000 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5426,7 +5519,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-98
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="GLO AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${98}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",TodayDate="${date2}" ,transactiontype="GLO AIRTIME" ,createdAt="${date}",transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${98},userid="${id}" ,planName="100 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5501,7 +5594,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-297
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="GLO AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${297}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}",createdAt="${date}",transactiontype="GLO AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${297},userid="${id}" ,planName="300 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5576,7 +5669,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-198
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="GLO AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${198}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}" ,TodayDate="${date2}",transactiontype="GLO AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${198},userid="${id}" ,planName="200 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5651,7 +5744,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-495
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="GLO AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${495}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}" ,TodayDate="${date2}",transactiontype="GLO AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${495},userid="${id}" ,planName="500 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5720,13 +5813,12 @@ data += chunk;
 
  
 res.on('end', () => { 
-console.log(JSON.parse(data));
 const kano=JSON.parse(data) 
 if(kano.Status==="successful"){
 const NewBalance=result[0].price-990
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="GLO AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${990}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}" ,TodayDate="${date2}",transactiontype="GLO AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${990},userid="${id}" ,planName="1000 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5808,7 +5900,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-98
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="9MOBILE AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${98}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}",TodayDate="${date2}" ,transactiontype="9MOBILE AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${98},userid="${id}" ,planName="100 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5883,7 +5975,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-297
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="9MOBILE AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${297}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}" ,TodayDate="${date2}",transactiontype="9MOBILE AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${297},userid="${id}" ,planName="300 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -5958,7 +6050,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-198
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="9MOBILE AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${198}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="9MOBILE AIRTIME",TodayDate="${date2}" ,transactionstatus="successful",createdAt="${date}", recipientnumber="${phonenumber} ",transactionamount=${198},userid="${id}" ,planName="200 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -6033,7 +6125,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-495
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="Airtel" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${495}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}",createdAt="${date}",TodayDate="${date2}" ,transactiontype="9MOBILE AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount=${495},userid="${id}" ,planName="500 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -6108,7 +6200,7 @@ if(kano.Status==="successful"){
 const NewBalance=result[0].price-990
 const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
 db.query(`update customer set price="${NewBalance}"`)
-db.query(`insert into transactionhistory set transactionid="${MDS}" ,transactiontype="9MOBILE AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",transactionamount="${990}",userid="${id}" ,planName="100 Naira" `)
+db.query(`insert into transactionhistory set transactionid="${MDS}" ,TodayDate="${date2}" ,transactiontype="9MOBILE AIRTIME" ,transactionstatus="successful", recipientnumber="${phonenumber} ",createdAt="${date}",transactionamount="${990}",userid="${id}" ,planName="1000 Naira" `)
  db.query(`select * from customer where customerid="${id}"`,(err,result)=>{
   if(err){console.log(err)}
   response.status(200).json(result)
@@ -6148,25 +6240,70 @@ req.end();
   }
          
  })   
-   
+    
 }  
   
+export const transactionA=(req,res)=>{
+  const id=req.params.id 
+  const d=new Date()
+  var one=d.getMonth()+1 
+ const formattedDate=d.getFullYear()+"-"+one+"-"+d.getDate()  
 
-export const transaction=(req,res)=>{
-  const id=req.params.id
- db.query(`select transactionid,transactionstatus,planname from transactionhistory  where userid=${id}`,(err,result)=>{
+ db.query(`select transactionid,createdAt,transactionstatus from transactionhistory    where   userid=${id}`,(err,result)=>{
   if(err){console.log(err)} 
-res.status(200).json(result) 
+res.status(200).json(result)   
  })
 
 }
 
+export const transaction=(req,res)=>{
+  const id=req.params.id 
+  const d=new Date()
+  var one=d.getMonth()+1 
+ const formattedDate=d.getFullYear()+"-"+one+"-"+d.getDate()  
+
+ db.query(`select transactionid,transactionstatus,CreatedAt,PlanName,RecipientNumber from transactionhistory    where TodayDate="${formattedDate}" and userid=${id}`,(err,result)=>{
+  if(err){console.log(err)} 
+res.status(200).json(result)   
+ })
+
+}
+   export const BManual=(req,res)=>{
+const id=req.params.id 
+   db.query(`select price from customer where customerId=${id}`,(err,result)=>{
+    if(err){console.log(err)} 
+    res.status(200).json(result)
+   })
+
+}
+export const Ffunding=(req,res)=>{ 
+  const{amount,total}=req.body    
+  const id=req.params.id  
+  if(!amount){ 
+    return res.status(401).json({message:"Enter Amount To Fund"})
+  }
+  db.query(`update customer set price="${total}" where customerId="${id}"`,(err,result)=>{
+    if(err){console.log(err)} 
+      db.query(`select * from customer where CustomerId=${id}`,(err,result)=>{
+        if(err){console.log(err)}  
+        const { password: userPassword, ...userInfo } = result[0];
+
+        res.status(200).json(userInfo)
+      })
+
+  })
+}
+export const fetchPrice=(req,res)=>{
+  db.query(`select * from dataprice`,(err,result)=>{
+    if(err){console.log(err)}
+    res.status(200).json(result)
+  })
+}
 export const transactionDetail=(req,res)=>{
   const id=req.params.id
  db.query(`select * from transactionhistory  where transactionid="${id}"`,(err,result)=>{
   if(err){console.log(err)} 
 res.status(200).json(result)
-console.log(result)
  })
 
 }
@@ -6185,4 +6322,4 @@ console.log(result)
 
 
 
-
+ 

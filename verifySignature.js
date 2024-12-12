@@ -8,9 +8,9 @@ function verifyMonnifySignature(req) {
   // Monnify secret key (replace with your actual secret key)
   const secretKey = 'LSGV28Q2ND84GGCZHDV2W7N03ZEERZ09';
 
-  // Create HMAC SHA512 hash using the request body and secret key
+  // Create HMAC SHA512 hash using the request body and secret key 
   const hash = crypto.createHmac('sha512', secretKey).update(requestBody).digest('hex');
-
+ 
   // Compare the generated hash with Monnify's signature
   return hash === monnifySignature;
 }

@@ -1,8 +1,10 @@
 import mysql2 from"mysql2"
 import dotenv from "dotenv"
+import bcrypt from "bcrypt";
 
 dotenv.config();
 const db=mysql2.createConnection({
+  
   connectionLimit:process.env.f, 
   host:process.env.Database_Host,
   user:process.env.Database_User,
@@ -10,212 +12,70 @@ const db=mysql2.createConnection({
   database:process.env.Database , 
 
 })
-import bcrypt from "bcrypt";
-
-export const getUsers = async (req, res) => {
-  try {
-    // const users = await prisma.user.findMany();
-    // res.status(200).json(users); 
-    db.query('select *  from user ',(err,result)=>{
-      if(err){console.log(err)}
-          res.status(200).json(result); 
-    })
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Failed to get users!" });
-  }
-};
-
-export const getUser = async (req, res) => {
-  const id = req.params.id;
-  try {
-    // const user = await prisma.user.findUnique({
-    //   where: { id },
-    // });
-    db.query('select * from user where id=?'[id],(err,result)=>{
-      if(err){ console.log(err)}
-      res.status(200).json(result);
-    })
-  
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Failed to get user!" });
-  }
-};
-
+ 
 export const updateUser = async (req, res) => {
   const id = req.params.id;
-
   const tokenUserId = req.id;
- 
-  let { password, username,avatar,email} = req.body;
-     
+  let { password, pwd, username, avatar, email } = req.body;
+
   if (id !== tokenUserId) {
     return res.status(403).json({ message: "Not Authorized!" });
-    
   }
 
-
-
-  let updatedPassword = null;
-
-    if (password) {
-      updatedPassword = await bcrypt.hash(password, 10);
-    }
- db.query(`update customer set email = "${email}" , username="${username}" where CustomerId ="${id}" ` ,(err,result)=>{
-      if(err){ console.log(err)}
-   
-    }) 
-    
- 
-    
-   if(password &&avatar ){
-    db.query(`update Customer set email = "${email}" ,username="${username}" ,password ="${updatedPassword}" , avatar="${avatar}" where Customerid="${id}"`,(err,result)=>{
-      if(err){ console.log(err)}
-    
-    })
-   } else if(!password && !avatar ){
-    db.query(`update Customer set email = "${email}" , username="${username}" where CustomerId ="${id}" ` ,(err,result)=>{
-      if(err){ console.log(err)}
-
-      
-  
-    }) 
-    
-
-   }
-
-   else if(!password &&avatar){
-    db.query(`update Customer set email = "${email}" ,username="${username}" , avatar="${avatar}" where CustomerId ="${id}"`,(err,result)=>{
-      if(err){ console.log(err)}
-    })
-   }
-   else {
-    db.query(`update Customer set email = "${email}" ,username="${username}" ,password ="${updatedPassword}" where CustomerId="${id}" `,(err,result)=>{
-      if(err){ console.log(err)}
-    })
-   }
- 
-
-    
-   db.query(`select * from Customer where CustomerId ="${id}"`,(err,result)=>{
-    if(err){console.log(err)}
-         const [v]=result
-         const {password,...rest}=v
-         res.status(200).json(rest)
-  }) 
-
-
-
- 
-  
-  
-
- 
- };
-
- 
-  
-  
-
- 
- 
-
-
-export const deleteUser = async (req, res) => {
-  const id = req.params.id;
-  const tokenUserId = req.userId;
-
-  if (id !== tokenUserId) {
-    return res.status(403).json({ message: "Not Authorized!" });
+  if (!pwd) {
+    return res.status(400).json({ message: "You Must Enter Login Detail" });
   }
 
   try {
-    db.query(`delete from user where id=${id}`,(err,result)=>{
-      if(err){console.log(err)}
-    })
+    // Check if the provided password matches the user's stored password
+    const [passwordResult] = await db.promise().query('SELECT password FROM customer WHERE CustomerId = ?', [id]);
+    if (!passwordResult.length || !(await bcrypt.compare(pwd, passwordResult[0].password))) {
+      return res.status(401).json({ message: "Incorrect Login Detail" });
+    }
 
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Failed to delete users!" });
+    // Check if the username is already taken (excluding the current user)
+    const [usernameResult] = await db.promise().query('SELECT username FROM customer WHERE username = ? AND CustomerId != ?', [username, id]);
+    if (usernameResult.length > 0) {
+      return res.status(409).json({ message: "This Username Already Exists" });
+    }
+
+    // Prepare the updated data
+    const updates = {
+      email,
+      username,
+      password: password ? await bcrypt.hash(password, 10) : undefined,
+      avatar,
+    };
+
+    // Update the customer record
+    const updateQuery = `
+      UPDATE customer
+      SET
+        email = ?,
+        username = ? 
+        ${updates.password ? 'password = ?,' : ''}   
+        ${updates.avatar ? 'avatar = ?' : ''}  
+        
+      WHERE CustomerId = ?`;
+    const queryParams = [email, username];
+    if (updates.password) queryParams.push(updates.password);
+    if (updates.avatar) queryParams.push(avatar);
+    queryParams.push(id);
+
+    await db.promise().query(updateQuery, queryParams);
+
+    // Retrieve and return the updated user data
+    const [updatedUser] = await db.promise().query('SELECT * FROM customer WHERE CustomerId = ?', [id]);
+    if (!updatedUser.length) {
+      return res.status(404).json({ message: "User not found after update" });
+    }
+
+    // Exclude the password from the response
+    const { password: _, ...userData } = updatedUser[0];
+    return res.status(200).json(userData);
+
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return res.status(500).json({ message: "An internal error occurred" });
   }
 };
-
-// export const savePost = async (req, res) => {
-//   const postId = req.body.postId;
-//   const tokenUserId = req.userId;
-
-//   try {
-//     const savedPost = await prisma.savedPost.findUnique({
-//       where: {
-//         userId_postId: {
-//           userId: tokenUserId,
-//           postId,
-//         },
-//       },
-//     });
-
-//     if (savedPost) {
-//       await prisma.savedPost.delete({
-//         where: {
-//           id: savedPost.id,
-//         },
-//       });
-//       res.status(200).json({ message: "Post removed from saved list" });
-//     } else {
-//       await prisma.savedPost.create({
-//         data: {
-//           userId: tokenUserId,
-//           postId,
-//         },
-//       });
-//       res.status(200).json({ message: "Post saved" });
-//     }
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json({ message: "Failed to delete users!" });
-//   }
-// };
-
-// export const profilePosts = async (req, res) => {
-//   const tokenUserId = req.userId;
-//   try {
-//     const userPosts = await prisma.post.findMany({
-//       where: { userId: tokenUserId },
-//     });
-//     const saved = await prisma.savedPost.findMany({
-//       where: { userId: tokenUserId },
-//       include: {
-//         post: true,
-//       },
-//     });
-
-//     const savedPosts = saved.map((item) => item.post);
-//     res.status(200).json({ userPosts, savedPosts });
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json({ message: "Failed to get profile posts!" });
-//   }
-// };
-
-// export const getNotificationNumber = async (req, res) => {
-//   const tokenUserId = req.userId;
-//   try {
-//     const number = await prisma.chat.count({
-//       where: {
-//         userIDs: {
-//           hasSome: [tokenUserId],
-//         },
-//         NOT: {
-//           seenBy: {
-//             hasSome: [tokenUserId],
-//           },
-//         },
-//       },
-//     });
-//     res.status(200).json(number);
-//   } catch (err) {
-//     console.log(err);
-//     res.status(500).json({ message: "Failed to get profile posts!" });
-//   }
-// };
