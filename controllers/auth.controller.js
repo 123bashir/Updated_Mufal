@@ -53,7 +53,6 @@ UserInfo
                   const date=d.getFullYear()+"-"+one+"-"+d.getDate()+"   "+two+":"+d.getMinutes()+":"+d.getSeconds()
 
             const random =  Math.floor(Math.random()*1213009478547770)
-           console.log(date)
           db.query('insert into customer set  ?',{customerid:random,createdAt:date, username:username,email:email,Password:hashedPassword},(err,result)=>{
             if (err){ console.log(err)}
             res.json()

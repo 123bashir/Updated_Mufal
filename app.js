@@ -29,7 +29,6 @@ const authToken = Buffer.from(`${apiKey}:${secretKey}`).toString('base64');
 
 app.post('/api/initiate-payment', async (req, res) => {
   const paymentData = req.body;
-   console.log(req.body)
   try {
     const response = await axios.post(
       'https://sandbox.monnify.com/api/v1/merchant/transactions/init-transaction',
@@ -49,25 +48,23 @@ app.post('/api/initiate-payment', async (req, res) => {
   }
 });
 
-// Function to verify Monnify signature
-function verifyMonnifySignature(req) {
-  const monnifySignature = req.headers['monnify-signature'];
-  const calculatedSignature = crypto.createHmac('sha512', process.env.Secret_Key)
-    .update(JSON.stringify(req.body))
-    .digest('hex');
+// // Function to verify Monnify signature
+// function verifyMonnifySignature(req) {
+//   const monnifySignature = req.headers['monnify-signature'];
+//   const calculatedSignature = crypto.createHmac('sha512', process.env.Secret_Key)
+//     .update(JSON.stringify(req.body))
+//     .digest('hex');
 
-  return monnifySignature === calculatedSignature; 
-}
+//   return monnifySignature === calculatedSignature; 
+// }
 
 app.post('/api/fund/webhook', (req, res) => {
   const transactionInfo = req.body;
 
-  if (!verifyMonnifySignature(req)) { 
-    return res.status(400).send('Invalid signature');
-  }
-
-  const { paymentReference, amountPaid, customer: { email }, paymentStatus } = transactionInfo;
-
+  // const { paymentReference, amountPaid, customer: { email }, paymentStatus } = transactionInfo;
+   const amountPaid=transactionInfo.responseBody.amountPaid  
+  const email=transactionInfo.responseBody.customer.email 
+    const paymentStatus=transactionInfo.responseBody.paymentStatus  
  
   if (paymentStatus === 'PAID') {
 
@@ -77,11 +74,11 @@ app.post('/api/fund/webhook', (req, res) => {
         return res.status(500).send('Database error'); 
       }
 
-
+ 
       if (result.length > 0) {
         const user = result[0];
 
-        const newBalance = parseFloat(user.balance) + parseFloat(amountPaid);
+        const newBalance = parseFloat(user.Price) + parseFloat(amountPaid); 
         db.query(`UPDATE customer SET Price = ? WHERE email = ?`, [newBalance, email], (err) => {
           if (err) {
             console.error('Error updating balance:', err);
