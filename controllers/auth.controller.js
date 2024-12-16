@@ -121,6 +121,16 @@ export const setMtnData=(req,res)=>{
   res.status(200).json()
   })
 } 
+     
+export const Data=(req,res)=>{
+  const id=req.params.id
+db.query(`select * from customer where customerid="${id}" `,(err,result)=>{
+  const { password: userPassword, ...userInfo } = result[0];
+     res.status(200).json(userInfo)
+})  
+
+
+}
 export const PopUp=(req,res)=>{ 
   const{    a}=req.body  
 

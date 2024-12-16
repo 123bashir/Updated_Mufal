@@ -23,8 +23,8 @@ const db=mysql2.createConnection({
   password:  process.env.Database_password,
   database:  process.env.Database
 })
-const apiKey = "MK_TEST_APYH15682J"; 
-const secretKey = "LSGV28Q2ND84GGCZHDV2W7N03ZEERZ09"; 
+const apiKey = "MK_TEST_SVEY66TFTA"; 
+const secretKey = "8598S8WFM033Y54S4PPR4T715ZXNE9VN"; 
 const authToken = Buffer.from(`${apiKey}:${secretKey}`).toString('base64');
 
 app.post('/api/initiate-payment', async (req, res) => {
@@ -85,24 +85,23 @@ app.post('/api/fund/webhook', (req, res) => {
             return res.status(500).send('Failed to update balance');
           }
 
-          console.log(`Payment successful! User ${user.username}'s new balance: ${newBalance}`);
-          return res.status(200).send('Webhook received and processed successfully');
+          return res.status(200).json(newBalance);
         });
       } else {
         console.error('User not found'); 
         return res.status(404).send('User not found');
       }
     });
-  } else {
+  } else { 
     console.error('Payment failed or not completed');
     return res.status(400).send('Payment not successful');
-  }
-}); 
+  }  
+});      
 
 app.use("/api/auth", authRoute);
-app.use("/api/users", userRoute);
+app.use("/api/users", userRoute);    
 
-app.use("/api/test", testRoute);
+app.use("/api/test", testRoute); 
 
 
 app.listen(8800, () => {
