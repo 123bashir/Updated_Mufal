@@ -104,6 +104,6 @@ app.use("/api/users", userRoute);
 app.use("/api/test", testRoute); 
 
 
-app.listen(8800, () => {
+app.listen(4000, () => {
   console.log("Server is running atport 8800!");
 });
