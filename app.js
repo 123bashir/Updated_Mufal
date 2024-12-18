@@ -18,11 +18,13 @@ app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser()); 
 const db=mysql2.createConnection({
-  host: process.env.Database_host,
-  user:  process.env.Database_user,
-  password:  process.env.Database_password,
-  database:  process.env.Database
-})
+	host: 'localhost',
+  user:'mufal',
+  password:  'mufaldata@db1',
+  database:  process.env.Database,
+  port:"3306"
+});
+
 const apiKey = "MK_TEST_SVEY66TFTA"; 
 const secretKey = "8598S8WFM033Y54S4PPR4T715ZXNE9VN"; 
 const authToken = Buffer.from(`${apiKey}:${secretKey}`).toString('base64');
@@ -105,5 +107,5 @@ app.use("/api/test", testRoute);
 
 
 app.listen(4000, () => {
-  console.log("Server is running atport 8800!");
+  console.log("Server is running atport 4000!");
 });
