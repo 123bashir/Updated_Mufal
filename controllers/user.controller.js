@@ -1,4 +1,4 @@
-import mysql2 from"mysql2"
+import mysql2 from"mysql"
 import dotenv from "dotenv"
 import bcrypt from "bcrypt";
 
