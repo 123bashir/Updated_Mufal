@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 
-import mysql2 from"mysql2"
+import mysql2 from"mysql"
 import cookieParser from "cookie-parser"; 
 import authRoute from "./routes/auth.route.js";
 import axios from"axios"
