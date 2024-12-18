@@ -8,11 +8,10 @@ import dotenv from "dotenv"
 dotenv.config();
 const db=mysql2.createConnection({
   connectionLimit:process.env.f, 
-  host:process.env.Database_Host,
-  user:process.env.Database_User,  
-  password:process.env.Database_Password ,
-  database:process.env.Database , 
-
+  host:process.env.DB_HOST,
+  user:process.env.DB_USER,
+  password:process.env.DB_PASSWORD,
+  database:process.env.DB_NAME
 })
 
 

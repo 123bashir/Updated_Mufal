@@ -18,10 +18,10 @@ app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser()); 
 const db=mysql2.createConnection({
-	host: 'localhost',
-  user:'mufal',
-  password:  'mufaldata@db1',
-  database:  process.env.Database,
+	host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password:  process.env.DB_PASSWORD,
+  database:  process.env.DB_NAME,
   port:"3306"
 });
 
