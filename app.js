@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 
-import mysql2 from"mysql"
+import mysql2 from"mysql2"
 import cookieParser from "cookie-parser"; 
 import authRoute from "./routes/auth.route.js";
 import axios from"axios"
@@ -107,5 +107,5 @@ app.use("/api/test", testRoute);
 
 
 app.listen(4000, () => {
-  console.log("Server is running atport 4000!");
+  console.log("Server is running at port 4000!");
 });

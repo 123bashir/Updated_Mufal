@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import axios from"axios" 
-import mysql2 from "mysql"
+import mysql2 from "mysql2"
 import nodemailer from"nodemailer"
 import https from "https" 
 import dotenv from "dotenv"
