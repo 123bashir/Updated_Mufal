@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 
 dotenv.config();
 const db=mysql2.createConnection({
-  connectionLimit:process.env.f, 
+  // connectionLimit:process.env.f, 
   host:process.env.DB_HOST,
   user:process.env.DB_USER,
   password:process.env.DB_PASSWORD,
