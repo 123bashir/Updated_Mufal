@@ -8,8 +8,7 @@ const router = express.Router();
 router.post("/register", register);           
 router.post("/login", login);
 router.post("/Adminlogin", AdminLogin);
-router.get("/fetchPrice",fetchPrice)  
-router.get("/fetchPrice2",fetchPrice2)    
+router.get("/fetchPrice",fetchPrice)   
 router.post("/pin/:id", pin);  
 router.post("/popup", PopUp); 
 
