@@ -18,13 +18,12 @@ app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json());
 app.use(cookieParser()); 
 const db=mysql2.createConnection({
-	host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password:  process.env.DB_PASSWORD,
-  database:  process.env.DB_NAME,
-  port:"3306"
+  host: 'localhost',  
+  user:  'mufal',
+  password:  'mufaldata@db1',
+  database:  'mufaldata'
 });
-
+ 
 const apiKey = "MK_TEST_SVEY66TFTA"; 
 const secretKey = "8598S8WFM033Y54S4PPR4T715ZXNE9VN"; 
 const authToken = Buffer.from(`${apiKey}:${secretKey}`).toString('base64');

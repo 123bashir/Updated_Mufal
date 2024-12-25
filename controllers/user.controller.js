@@ -5,10 +5,10 @@ import bcrypt from "bcrypt";
 dotenv.config();
 const db=mysql2.createConnection({
   // connectionLimit:process.env.f, 
-  host:process.env.DB_HOST,
-  user:process.env.DB_USER,
-  password:process.env.DB_PASSWORD,
-  database:process.env.DB_NAME,
+  host: 'localhost',  
+  user:  'mufal',
+  password:  'mufaldata@db1',
+  database:  'mufaldata'
 })
  
 export const updateUser = async (req, res) => {

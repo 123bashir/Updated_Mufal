@@ -5,7 +5,7 @@ const connection = mysql2.createConnection({
     host: 'localhost',        // Change to your MySQL server IP if necessary
     user:  'mufal',
   password:  'mufaldata@db1',
-  database:  process.env.Database
+  database:  'mufaldata'
 });
 
 // Attempt to connect
@@ -21,6 +21,7 @@ export const fetchPrice2=(req,res)=>{
     connection.query(`select * from dataprice`,(err,result)=>{
       if(err){console.log(err)}
       res.status(200).json(result)
+      console.log(err, result)
     })
   }
 
