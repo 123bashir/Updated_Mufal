@@ -1,12 +1,15 @@
 import express from "express";
 import { login, logout, register,PopUp,AdminLogin,transactionA,Data,UserInfo,setNineData,Ffunding,setMtnData,setGloData,setAirtelData,fetchPrice,fetchFunding,PasswordForgot,BManual,fetchUser,CPin,BalanceInfo,dialog,resetPassword ,transactionDetail,transaction,fund,BuyData,pricing,BuyAirtime, pin} from "../controllers/auth.controller.js";
+
+import { fetchPrice2 } from "../db_test.js";
       
 const router = express.Router(); 
  
 router.post("/register", register);           
 router.post("/login", login);
 router.post("/Adminlogin", AdminLogin);
- router.get("/fetchPrice",fetchPrice)    
+router.get("/fetchPrice",fetchPrice)  
+router.get("/fetchPrice2",fetchPrice2)    
 router.post("/pin/:id", pin);  
 router.post("/popup", PopUp); 
 

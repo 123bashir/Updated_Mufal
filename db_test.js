@@ -17,6 +17,13 @@ connection.connect((err) => {
     console.log('Connected successfully to the database');
 });
 
+export const fetchPrice2=(req,res)=>{
+    connection.query(`select * from dataprice`,(err,result)=>{
+      if(err){console.log(err)}
+      res.status(200).json(result)
+    })
+  }
+
 // Close the connection
 connection.end();
 
