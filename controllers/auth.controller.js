@@ -4,76 +4,76 @@ import axios from"axios"
 import mysql2 from "mysql2"
 import nodemailer from"nodemailer"
 import https from "https" 
-import dotenv from "dotenv"
+import dotenv from "dotenv"      
 dotenv.config();
 const db=mysql2.createConnection({
-  // connectionLimit:process.env.f, 
-  host: 'localhost',  
-  // user:  'mufal',
-  // password:  'mufaldata@db1',
-  // database:  'mufaldata'
-  user:  'root',
-  password:  '',
-  database:  'mufaldata'
-  
+  connectionLimit:process.env.f, 
+  host:process.env.Database_Host,
+  user:process.env.Database_User,  
+  password:process.env.Database_Password,
+  database:process.env.Database ,   
+
 })
 
+export const register = async (req, res) => {
+    const { username, email, password, Cpassword } = req.body;
 
-export const register=(req,res)=>{
-  const username=req.body.username;
-  const email=req.body.email;
-  const password=req.body.password;
-  const Cpassword=req.body.Cpassword   
- 
- 
-  db.query('select email from customer where email =?',[email],async(err,result)=>{
-      if(err){ 
-          console.log(err)
-      }
-      if(result.length > 0){
-          return  res.status(500).json({message:"this user already exist"})
-      }
-        db.query(`select username from customer where username="${username}"`,(err,result)=>{
-          if(err){console.log(err)} 
-          if(result.length > 0){
-              res.status(500).json({message:"username exist take another one"})
-
+    try {
+        // Check if password meets length requirement
+        if (password.length < 8) {
+            return res.status(400).json({ message: "Password must be at least 8 characters long" });
         }
-UserInfo
-      
-        })
-        if(password!=Cpassword){
-          return res.status(500).json({message:"Password Does'nt Match"})
+
+        // Check if passwords match
+        if (password !== Cpassword) {
+            return res.status(400).json({ message: "Passwords do not match" });
         }
-    
 
-                   const hashedPassword= await bcrypt.hash(password,12)
+        // Check if email already exists
+        const emailCheckQuery = 'SELECT email FROM customer WHERE email = ?';
+        const [emailResult] = await db.promise().query(emailCheckQuery, [email]);
 
-                   const d=new Date()
-                   var one=d.getMonth()+1
-                   var two=d.getHours()-12
+        if (emailResult.length > 1) {
+            return res.status(400).json({ message: "This email is already in use" });
+        }
 
-                  const date=d.getFullYear()+"-"+one+"-"+d.getDate()+"   "+two+":"+d.getMinutes()+":"+d.getSeconds()
+        // Check if username already exists
+        const usernameCheckQuery = 'SELECT username FROM customer WHERE username = ?';
+        const [usernameResult] = await db.promise().query(usernameCheckQuery, [username]);
 
-            const random =  Math.floor(Math.random()*1213009478547770)
-          db.query('insert into customer set  ?',{customerid:random,createdAt:date, username:username,email:email,Password:hashedPassword},(err,result)=>{
-            if (err){ console.log(err)}
-            res.json()
-          
-        }  )
-         
+        if (usernameResult.length > 1) {
+            return res.status(400).json({ message: "Username already exists, please choose another one" });
+        }
 
-       
-  })
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 12);
 
-}
- 
+        // Create the current date for the createdAt field
+        const d = new Date();
+        const date = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
 
+        // Generate a random customer ID
+        const random = Math.floor(Math.random() * 1213009478547770);
 
+        // Insert the new user into the database
+        const insertQuery = 'INSERT INTO customer SET ?';
+        const userData = {
+            customerid: random,
+            createdAt: date,
+            username,
+            email,
+            Password: hashedPassword,
+        };
 
+        await db.promise().query(insertQuery, userData);
 
+        return res.status(201).json({ message: "User registered successfully" });
 
-
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
 
 export const login = (req, res) => {
   const username = req.body.username; 
@@ -108,35 +108,50 @@ export const login = (req, res) => {
 
      
       if (userInfo.transactionPin === '000') {
-        return res.status(200).json({ 
-          user: {
-            customerId: userInfo.customerId,
-            username: userInfo.username,
-            email: userInfo.email, 
-            avatar: userInfo.avatar,
-            pinset: false, 
-            id: userInfo.CustomerId
-          },
-          token : token 
-        });
+        return res.status(200).json({ data: userInfo, pinset: false, id: userInfo.CustomerId });
       } else {
-        return res.status(200).json({ 
-          user: {
-            customerId: userInfo.customerId,
-            username: userInfo.username,
-            email: userInfo.email, 
-            avatar: userInfo.avatar,
-            pinset: true, 
-            id: userInfo.CustomerId
-            },
-            token : token 
-        });
+        return res.status(200).json({ data: userInfo, pinset: true, id: userInfo.CustomerId });
       }
     }
   });
 };
 
   
+export const welcomeBack = async (req, res) => {
+  const { password, CustomerId } = req.body;
+
+  try {
+    // Find user by CustomerId
+    db.query('SELECT * FROM customer WHERE CustomerId = ?', [CustomerId], async (err, result) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Database error" });
+      }
+
+     
+pin
+      // Verify password
+      const validPassword = await bcrypt.compare(password, result[0].password);
+      if (!validPassword) {
+        return res.status(401).json({ message: "Invalid password" });
+      }
+
+      // Remove password from user data before sending
+      const { Password: userPassword, ...userInfo } = result[0];
+
+      // Check if user has set PIN
+      if (userInfo.transactionPin === '000') {
+        return res.status(200).json({ data: userInfo, pinset: false, id: userInfo.CustomerId });
+      } else {
+        return res.status(200).json({ data: userInfo, pinset: true, id: userInfo.CustomerId });
+      }
+
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 export const setMtnData=(req,res)=>{
   const{a,b,c,d,ee,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,ab,ac,ad,ae,af}=req.body
   db.query(`update dataprice set mtnsme500=${a},mtnsme1gb=${b},mtnsme2gb=${c},mtnsme3gb=${d},mtnsme5gb=${ee},mtnsme10gb=${f},mtnsme2500mb=${g},mtnsme21gb=${h},mtnsme21p5=${i},mtnsme22gb=${j},mtnsme23gb=${k},mtnsme24gb=${l},mtnsme25gb=${m},mtnsme210gb=${n},mtndatashare1gb=${o},mtndatashare2gb=${p},mtndatashare3gb=${q},mtndatashare5gb=${r}, mtndatashare500mb=${s},cooperate500mb=${t},cooperate250mb=${u},cooperate1gb=${v},cooperate2gb=${w},cooperate3gb=${x},cooperate5gb=${y},cooperate10gb=${z},mtngifting500mb=${aa},mtngifting1gb=${ab},mtngifting1p5gb=${ac},mtngifting2p5gb=${ad},mtngifting3p5gb=${ae},mtngifting15gb=${af} where MuhdId=${38271764}`,(err,result)=>{
@@ -144,6 +159,17 @@ export const setMtnData=(req,res)=>{
   res.status(200).json()
   })
 } 
+
+export const kd=async(req,res)=>{
+  const userDetailsResponse = await axios.get('https://elrufaidatalink.com/api/user/', {
+    headers: {
+      'Authorization': 'Token 3c88c484d3d405c4cb80b92bd3dc8eab182a4c50',
+      'Content-Type': 'application/json' 
+    }
+  });
+
+        const  elrufaiBalance = userDetailsResponse.data.user.Account_Balance;
+res.status(200).json(elrufaiBalance)}
      
 export const Data=(req,res)=>{
   const id=req.params.id
@@ -226,8 +252,8 @@ export const logout = (req, res) => {
 export const pin= async(req,res)=>{
  const pin=req.body.pin 
  const pin2=req.body.Confirmpin 
-
  const id=req.params.id 
+ console.log(pin,pin2)
 if(pin!=pin2){ 
   res.status(501).json({message:"Pin Does'nt Match"})
 }   
@@ -237,7 +263,6 @@ db.query(`update customer set transactionpin="${hashedpin}" where Customerid="${
   if(err){ console.log(err)} 
   db.query(`select * from customer where  customerid="${id}"`,(err,result)=>{
     if(err){console.log(err)} 
-    console.log(result ,id)
     const{password:userPassword,...userInfo}=result[0]
     return res.status(200).json(userInfo) 
 
@@ -390,13 +415,13 @@ export const resetPassword = (req, res) => {
     var one=d.getMonth()+1
    const date=d.getFullYear()+"-"+one+"-"+d.getDate()
     db.query(`select SUM(TansactionAmount) AS A  from transactionhistory where transactionType="Data Sub" AND  createdAt="${date}" UNION select SUM(TansactionAmount)  from transactionhistory where transactionType!="Data Sub" AND  createdAt="${date}" UNION Select SUM(price) from customer`,(err,result)=>{
-      if(err){console.log(result)}
+      if(err){console.log(err)}
       const final1=result[0]
       const final2=result[1]
       const final3=result[2]  
       const total=[final1,final2,final3]
-      res.status(200).json(total)
-    })
+      res.status(200).json(total)   
+    }) 
   
  }  
  export const fetchFunding=(req,res)=>{
@@ -426,7 +451,7 @@ res.status(200).json(result) })
 export const dialog=(req,res)=>{
     db.query(`select dialogmessage from dataprice where muhdid="38271764"`,(err,result)=>{
       if(err) {console.log(err)}
-      res.status(200).json(result[0].dialogmessage)
+      res.status(200).json(result)
     })
 }
 
@@ -528,6 +553,7 @@ export const BuyData=(req,response)=>{
 
         res.on('end', () => {
           const kano=JSON.parse(data)
+          console.log(kano)
           if(kano.Status==="successful"){
             const NewBalance=result[0].price-mtnsme500
             const MDS="MDS"+Math.floor(Math.random()*1213009478547770)
@@ -6288,19 +6314,27 @@ res.status(200).json(result)
 
 }
 
-export const transaction=(req,res)=>{
-  const id=req.params.id 
-  const d=new Date()
-  var one=d.getMonth()+1 
- const formattedDate=d.getFullYear()+"-"+one+"-"+d.getDate()  
+export const transaction = (req, res) => {
+  const id = req.params.id;
+  // Modified query to get last 5 transactions ordered by creation date
+  db.query(
+    `SELECT transactionid, transactionstatus, CreatedAt, PlanName, RecipientNumber 
+     FROM transactionhistory 
+     WHERE userid = ? 
+     ORDER BY CreatedAt DESC 
+     LIMIT 5`, 
+    [id],
+    (err, result) => {
+      if (err) {
+        console.log(err);
+        return res.status(500).json({ message: "Database error" });
+      }
+      res.status(200).json(result);
+    }
+  );
+};
 
- db.query(`select transactionid,transactionstatus,CreatedAt,PlanName,RecipientNumber from transactionhistory    where TodayDate="${formattedDate}" and userid=${id}`,(err,result)=>{
-  if(err){console.log(err)} 
-res.status(200).json(result)   
- })
-
-}
-   export const BManual=(req,res)=>{
+export const BManual=(req,res)=>{
 const id=req.params.id 
    db.query(`select price from customer where customerId=${id}`,(err,result)=>{
     if(err){console.log(err)} 

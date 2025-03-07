@@ -4,14 +4,13 @@ import bcrypt from "bcrypt";
 
 dotenv.config();
 const db=mysql2.createConnection({
-  // connectionLimit:process.env.f, 
-  host: 'localhost',  
-  // user:  'mufal',
-  // password:  'mufaldata@db1',
-  // database:  'mufaldata'
-  user:  'root',
-  password:  '',
-  database:  'mufaldata'
+  
+  connectionLimit:process.env.f, 
+  host:process.env.Database_Host,
+  user:process.env.Database_User,
+  password:process.env.Database_Password ,
+  database:process.env.Database , 
+
 })
  
 export const updateUser = async (req, res) => {
@@ -48,7 +47,7 @@ export const updateUser = async (req, res) => {
       avatar,
     };
 
-    // Update the customer record
+    // Update the customer record 
     const updateQuery = `
       UPDATE customer
       SET

@@ -1,17 +1,15 @@
 import express from "express";
-import { login, logout, register,PopUp,AdminLogin,transactionA,Data,UserInfo,setNineData,Ffunding,setMtnData,setGloData,setAirtelData,fetchPrice,fetchFunding,PasswordForgot,BManual,fetchUser,CPin,BalanceInfo,dialog,resetPassword ,transactionDetail,transaction,fund,BuyData,pricing,BuyAirtime, pin} from "../controllers/auth.controller.js";
-
-// import { fetchPrice2 } from "../db_test.js";
+import { login, logout, register,PopUp,AdminLogin,transactionA,kd,Data,UserInfo,setNineData,Ffunding,setMtnData,setGloData,setAirtelData,fetchPrice,fetchFunding,PasswordForgot,BManual,fetchUser,CPin,BalanceInfo,dialog,resetPassword ,transactionDetail,transaction,fund,BuyData,pricing,BuyAirtime, pin, welcomeBack} from "../controllers/auth.controller.js";
       
 const router = express.Router(); 
  
 router.post("/register", register);           
 router.post("/login", login);
 router.post("/Adminlogin", AdminLogin);
-router.get("/fetchPrice",fetchPrice)   
+ router.get("/fetchPrice",fetchPrice)    
 router.post("/pin/:id", pin);  
 router.post("/popup", PopUp); 
-
+router.post("/welcome-back", welcomeBack)
 router.post("/Ffunding/:id", Ffunding); 
 router.post("/setMtnData",setMtnData)
 router.post("/setGloData",setGloData)
@@ -32,7 +30,7 @@ router.get("/transactionA/:id", transactionA);
 router.get("/user/:id", UserInfo);
 router.get("/Data/:id", Data);
 
-
+router.get("/kd",kd )
 
 
 
