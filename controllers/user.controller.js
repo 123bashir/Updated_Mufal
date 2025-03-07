@@ -6,8 +6,11 @@ dotenv.config();
 const db=mysql2.createConnection({
   // connectionLimit:process.env.f, 
   host: 'localhost',  
-  user:  'mufal',
-  password:  'mufaldata@db1',
+  // user:  'mufal',
+  // password:  'mufaldata@db1',
+  // database:  'mufaldata'
+  user:  'root',
+  password:  '',
   database:  'mufaldata'
 })
  

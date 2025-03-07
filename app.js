@@ -14,13 +14,17 @@ import dotenv from "dotenv"
 
 dotenv.config();
 
-app.use(cors({ origin: 'https://mufaldatasub.com', credentials: true }));
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
+// app.use(cors({ origin: 'https://mufaldatasub.com', credentials: true }));
 app.use(express.json());
 app.use(cookieParser()); 
 const db=mysql2.createConnection({
   host: 'localhost',  
-  user:  'mufal',
-  password:  'mufaldata@db1',
+  // user:  'mufal',
+  // password:  'mufaldata@db1',
+  // database:  'mufaldata'
+  user:  'root',
+  password:  '',
   database:  'mufaldata'
 });
  

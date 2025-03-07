@@ -3,8 +3,11 @@
 // Create a connection to the database
 const connection = mysql2.createConnection({
     host: 'localhost',        // Change to your MySQL server IP if necessary
-    user:  'mufal',
-  password:  'mufaldata@db1',
+    // user:  'mufal',
+  // password:  'mufaldata@db1',
+  // database:  'mufaldata'
+  user:  'root',
+  password:  '',
   database:  'mufaldata'
 });
 

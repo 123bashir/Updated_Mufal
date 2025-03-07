@@ -9,8 +9,11 @@ dotenv.config();
 const db=mysql2.createConnection({
   // connectionLimit:process.env.f, 
   host: 'localhost',  
-  user:  'mufal',
-  password:  'mufaldata@db1',
+  // user:  'mufal',
+  // password:  'mufaldata@db1',
+  // database:  'mufaldata'
+  user:  'root',
+  password:  '',
   database:  'mufaldata'
   
 })
@@ -105,9 +108,29 @@ export const login = (req, res) => {
 
      
       if (userInfo.transactionPin === '000') {
-        return res.status(200).json({ data: userInfo, pinset: false, id: userInfo.CustomerId });
+        return res.status(200).json({ 
+          user: {
+            customerId: userInfo.customerId,
+            username: userInfo.username,
+            email: userInfo.email, 
+            avatar: userInfo.avatar,
+            pinset: false, 
+            id: userInfo.CustomerId
+          },
+          token : token 
+        });
       } else {
-        return res.status(200).json({ data: userInfo, pinset: true, id: userInfo.CustomerId });
+        return res.status(200).json({ 
+          user: {
+            customerId: userInfo.customerId,
+            username: userInfo.username,
+            email: userInfo.email, 
+            avatar: userInfo.avatar,
+            pinset: true, 
+            id: userInfo.CustomerId
+            },
+            token : token 
+        });
       }
     }
   });
